@@ -2,8 +2,8 @@
 Coupa - Estorno de Recebimentos
 Lê números de PO da planilha Excel e estorna os recibos no Coupa.
 
-  Primeiro uso (login manual):   python coupa_estorno.py --login
-  Uso normal (já logado):        python coupa_estorno.py
+  Primeiro uso (login manual):   python main.py --login
+  Uso normal (já logado):        python main.py
 
 Configure as variáveis no arquivo .env (veja .env.example)
 """
@@ -19,8 +19,9 @@ from playwright.sync_api import sync_playwright, Page, BrowserContext, TimeoutEr
 
 load_dotenv()
 
-COUPA_URL       = os.getenv("COUPA_URL", "https://gpabr.coupahost.com/user/home")
-RECEBIMENTO_URL = os.getenv("RECEBIMENTO_URL", "https://gpabr.coupahost.com/receipts/history")
+COUPA_URL       = os.getenv("COUPA_URL", "")
+# Histórico de recebimentos: se não for informado, é montado a partir do COUPA_URL
+RECEBIMENTO_URL = os.getenv("RECEBIMENTO_URL") or COUPA_URL.replace("/user/home", "") + "/receipts/history"
 EXCEL_PATH      = Path(os.getenv("EXCEL_PATH", ""))
 COLUNA_REQ      = int(os.getenv("COLUNA_REQ", "7"))
 USER_DATA_DIR   = Path(os.getenv("USER_DATA_DIR", "./perfil_recebimento")).resolve()
@@ -179,6 +180,11 @@ def fazer_login_manual(context: BrowserContext) -> None:
 # ============================================================================
 def main() -> None:
     modo_login = "--login" in sys.argv
+
+    if not COUPA_URL:
+        sys.exit("COUPA_URL não configurada. Copie o .env.example para .env e preencha.")
+    if not modo_login and not EXCEL_PATH.is_file():
+        sys.exit(f"Planilha não encontrada em EXCEL_PATH ('{EXCEL_PATH}'). Confira o .env.")
 
     with sync_playwright() as p:
         context = p.chromium.launch_persistent_context(
